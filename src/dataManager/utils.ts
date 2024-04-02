@@ -68,6 +68,7 @@ export function getSortOrder(): string[] {
     DictionaryType.Linguee,
 
     TranslationType.OpenAI,
+    TranslationType.RaycastAI,
     TranslationType.DeepL,
     TranslationType.Google,
     TranslationType.Bing,

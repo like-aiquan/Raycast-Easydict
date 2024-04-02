@@ -43,6 +43,7 @@ export enum TranslationType {
   Bing = "Bing Translate",
   Volcano = "Volcano Translate",
   OpenAI = "OpenAI Translate",
+  RaycastAI = "RaycastAI",
 }
 
 export enum DictionaryType {
@@ -143,6 +144,10 @@ export interface AppleTranslateResult {
 }
 
 export interface OpenAITranslateResult {
+  translatedText: string;
+}
+
+export interface RaycastAITranslateResult {
   translatedText: string;
 }
 

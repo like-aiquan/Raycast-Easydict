@@ -606,6 +606,14 @@
     },
     {
       "type": "checkbox",
+      "name": "enableRaycastAITranslate",
+      "label": "Raycast AI Translate",
+      "required": false,
+      "description": "Turn on/off Raycast AI Translate. Use system proxy by default. Raycast Pro is required.",
+      "default": false
+    },
+    {
+      "type": "checkbox",
       "name": "enableDeepLTranslate",
       "label": "DeepL Translate",
       "required": false,

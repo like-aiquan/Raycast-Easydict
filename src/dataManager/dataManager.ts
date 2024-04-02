@@ -1,4 +1,4 @@
-import { OpenAITranslateResult } from "./../types";
+import { OpenAITranslateResult, RaycastAITranslateResult } from "./../types";
 /*
  * @author: tisfeng
  * @createTime: 2022-06-26 11:13
@@ -35,6 +35,7 @@ import { requestDeepLTranslate } from "../translation/deepL";
 import { requestGoogleTranslate } from "../translation/google";
 import { requestWebBingTranslate } from "../translation/microsoft/bing";
 import { requestOpenAIStreamTranslate } from "../translation/openAI/chat";
+import { requestRaycastAITranslate } from "../translation/raycast/raycast";
 import { requestTencentTranslate } from "../translation/tencent";
 import { requestVolcanoTranslate } from "../translation/volcano/volcanoAPI";
 import {
@@ -161,6 +162,7 @@ export class DataManager {
     this.queryVolcanoTranslate(queryWordInfo);
     this.queryCaiyunTranslate(queryWordInfo);
     this.queryOpenAITranslate(queryWordInfo);
+    this.queryRaycastAITranslate(queryWordInfo);
 
     this.delayQuery(queryWordInfo);
 
@@ -813,6 +815,86 @@ export class DataManager {
     }
   }
 
+  private queryRaycastAITranslate(queryWordInfo: QueryWordInfo) {
+    if (myPreferences.enableRaycastAITranslate) {
+      console.log("raycast ........");
+
+      const type = TranslationType.RaycastAI;
+      this.addQueryToRecordList(type);
+
+      let raycastAIQueryResult: QueryResult | undefined;
+
+      queryWordInfo.onMessage = (message) => {
+        const resultText = message.content;
+        console.warn(`onMessage content: ${message.content}`);
+        if (raycastAIQueryResult) {
+          const raycastAIResult = raycastAIQueryResult.sourceResult.result as RaycastAITranslateResult;
+          const translatedText = raycastAIResult.translatedText + message.content;
+          raycastAIResult.translatedText = translatedText;
+          raycastAIQueryResult.sourceResult.translations = [translatedText];
+          this.updateTranslationDisplay(raycastAIQueryResult);
+          console.warn(`onMessage: ${translatedText}`);
+        } else {
+          raycastAIQueryResult = {
+            type: type,
+            sourceResult: {
+              type,
+              queryWordInfo,
+              translations: [resultText],
+              result: {
+                translatedText: resultText,
+              },
+            },
+          };
+          this.updateTranslationDisplay(raycastAIQueryResult);
+        }
+      };
+      queryWordInfo.onFinish = (value) => {
+        console.warn(`onFinish content: ${value}`);
+
+        if (value === "stop") {
+          if (raycastAIQueryResult) {
+            const raycastAIResult = raycastAIQueryResult.sourceResult.result as RaycastAITranslateResult;
+            let translatedText = raycastAIResult.translatedText;
+            // If the translated last char contains ["”", '"', "」"], remove it.
+            const rightQuotes = ['"', "”", "'", "」"];
+            if (translatedText.length > 0) {
+              const lastQueryTextChar = queryWordInfo.word[queryWordInfo.word.length - 1];
+              const lastTranslatedTextChar = translatedText[translatedText.length - 1];
+              if (!rightQuotes.includes(lastQueryTextChar) && rightQuotes.includes(lastTranslatedTextChar)) {
+                translatedText = translatedText.slice(0, translatedText.length - 1);
+              }
+            }
+
+            raycastAIResult.translatedText = translatedText;
+            raycastAIQueryResult.sourceResult.translations = [translatedText];
+            this.updateTranslationDisplay(raycastAIQueryResult);
+            console.warn(`onFinish translatedText: ${translatedText}`);
+          }
+          this.removeQueryFromRecordList(type);
+        }
+      };
+
+      console.log("raycast ........1");
+
+      requestRaycastAITranslate(queryWordInfo)
+        .then((raycastAIQueryResult) => {
+          const queryResult: QueryResult = {
+            type: type,
+            sourceResult: raycastAIQueryResult,
+          };
+          this.updateTranslationDisplay(queryResult);
+        })
+        .catch((error) => {
+          showErrorToast(error);
+          this.removeQueryFromRecordList(type);
+        })
+        .finally(() => {
+          // move to onFinish
+        });
+    }
+  }
+
   /**
    * Add query to record list, and update loading status.
    */
@@ -876,6 +958,10 @@ export class DataManager {
     if (oneLineTranslation) {
       let key = `${oneLineTranslation}-${type}`;
       if (type === TranslationType.OpenAI) {
+        // Avoid frequent update cause UI flicker.
+        key = type;
+      }
+      if (type === TranslationType.RaycastAI) {
         // Avoid frequent update cause UI flicker.
         key = type;
       }
